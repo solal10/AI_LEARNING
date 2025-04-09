@@ -1,6 +1,6 @@
 import pytest
 import pandas as pd
-from src.utils.data_loader import DataLoader
+from src.data.data_loader import DataLoader
 from unittest.mock import patch, mock_open
 
 def test_load_data_success(tmp_path):

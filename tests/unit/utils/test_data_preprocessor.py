@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 import numpy as np
-from src.utils.data_preprocessor import DataPreprocessor
+from src.data.data_preprocessor import DataPreprocessor
 from sklearn.compose import ColumnTransformer
 
 def test_init():

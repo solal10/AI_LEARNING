@@ -1,8 +1,18 @@
-import numpy as np
 import pandas as pd
-from sklearn.datasets import fetch_california_housing
+import numpy as np
+import logging
 import matplotlib.pyplot as plt
 import seaborn as sns
+from typing import Dict, List
+import os
+from sklearn.datasets import fetch_california_housing
+
+# Configuration du logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Étape 1 — Préparation
 print("Étape 1 — Préparation")

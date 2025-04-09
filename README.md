@@ -1,4 +1,6 @@
-# California Housing Machine Learning Pipeline
+# California Housing Price Prediction
+
+[![CI/CD Pipeline](https://github.com/yourusername/california-housing/actions/workflows/ci.yml/badge.svg)](https://github.com/yourusername/california-housing/actions/workflows/ci.yml)
 
 A machine learning pipeline for analyzing and predicting California housing prices.
 

@@ -1,10 +1,19 @@
 import numpy as np
 import pandas as pd
+import logging
 from sklearn.datasets import fetch_california_housing
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression, Ridge, Lasso
 from sklearn.metrics import mean_squared_error, r2_score
 import matplotlib.pyplot as plt
+from typing import Tuple, Dict
+
+# Configuration du logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Load the California Housing dataset
 housing = fetch_california_housing()

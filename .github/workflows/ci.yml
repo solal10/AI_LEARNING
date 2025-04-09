@@ -26,6 +26,11 @@ jobs:
         python -m pip install --upgrade pip
         pip install numpy pandas scikit-learn matplotlib seaborn joblib pytest pytest-cov flake8 black scipy xgboost
         
+    - name: Setup data directory
+      run: |
+        mkdir -p data/raw
+        wget https://raw.githubusercontent.com/ageron/handson-ml2/master/datasets/housing/housing.csv -O data/raw/california_housing.csv
+        
     - name: Lint with flake8
       run: |
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics

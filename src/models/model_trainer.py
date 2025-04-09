@@ -2,11 +2,13 @@ import logging
 import joblib
 import pandas as pd
 import numpy as np
-from typing import Dict, Any, Union
+from typing import Dict, Any, Union, List
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 from sklearn.model_selection import cross_val_score, GridSearchCV
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.neighbors import KNeighborsRegressor
 import xgboost as xgb
 import os
 from sklearn.pipeline import Pipeline
@@ -497,3 +499,89 @@ class ModelTrainer:
         with open(best_params_file, "w") as f:
             json.dump(self.best_params, f, indent=4)
         logger.info(f"Meilleurs paramètres sauvegardés dans {best_params_file}")
+
+    def compare_models(self, X_train, y_train, X_test, y_test, preprocessor) -> Dict[str, Dict[str, float]]:
+        """
+        Compare les performances de plusieurs modèles.
+
+        Args:
+            X_train (pd.DataFrame): Features d'entraînement
+            y_train (pd.Series): Target d'entraînement
+            X_test (pd.DataFrame): Features de test
+            y_test (pd.Series): Target de test
+            preprocessor (ColumnTransformer): Preprocessor pour les transformations
+
+        Returns:
+            Dict[str, Dict[str, float]]: Dictionnaire contenant les métriques de performance pour chaque modèle
+        """
+        logger.info("Comparaison des performances des modèles...")
+
+        # Définir les modèles à comparer
+        models = {
+            "Linear Regression": LinearRegression(),
+            "Decision Tree": DecisionTreeRegressor(random_state=42),
+            "KNN": KNeighborsRegressor(n_neighbors=5),
+            "Random Forest": RandomForestRegressor(random_state=42),
+            "XGBoost": xgb.XGBRegressor(random_state=42, enable_categorical=True)
+        }
+
+        # Initialiser le dictionnaire pour stocker les résultats
+        results_dict = {}
+        y_preds = {}
+
+        # Évaluer chaque modèle
+        for name, model in models.items():
+            logger.info(f"Évaluation du modèle: {name}")
+            
+            # Créer le pipeline
+            pipeline = Pipeline([
+                ("preprocessor", preprocessor),
+                ("regressor", model)
+            ])
+
+            # Entraîner le modèle
+            pipeline.fit(X_train, y_train)
+
+            # Faire les prédictions
+            y_pred = pipeline.predict(X_test)
+            y_preds[name] = y_pred
+
+            # Calculer les métriques
+            rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+            mae = mean_absolute_error(y_test, y_pred)
+            r2 = r2_score(y_test, y_pred)
+
+            # Ajouter les résultats dans le dictionnaire
+            results_dict[name] = {
+                "RMSE": rmse,
+                "MAE": mae,
+                "R2": r2
+            }
+
+        # Créer le DataFrame à partir du dictionnaire
+        results_df = pd.DataFrame.from_dict(results_dict, orient='index')
+        results_df = results_df.reset_index().rename(columns={'index': 'Model'})
+        
+        # Trier par R2 (meilleur modèle en premier)
+        results_df = results_df.sort_values("R2", ascending=False)
+        
+        # Sauvegarder les résultats dans un CSV
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        results_file = os.path.join(self.model_dir, f"model_comparison_{timestamp}.csv")
+        results_df.to_csv(results_file, index=False)
+        
+        logger.info(f"Résultats de la comparaison sauvegardés dans {results_file}")
+        logger.info("\nComparaison des modèles:")
+        logger.info(results_df.to_string())
+
+        # Générer les visualisations
+        from src.reporting.report_generator import ReportGenerator
+        report_generator = ReportGenerator()
+        report_generator.generate_comparison_report(
+            y_test.values,
+            y_preds,
+            list(models.keys()),
+            results_dict
+        )
+        
+        return results_dict

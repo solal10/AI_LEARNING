@@ -79,6 +79,11 @@ class Pipeline:
             X_train, X_test, y_train, y_test, preprocessor = self.data_preprocessor.prepare_data(engineered_data)
             logger.info(f"Training data shape: {X_train.shape}, Test data shape: {X_test.shape}")
             
+            # Step 3.5: Comparaison des modèles
+            logger.info("Step 3.5: Comparing models...")
+            comparison_results = self.model_trainer.compare_models(X_train, y_train, X_test, y_test, preprocessor)
+            logger.info("Model comparison completed")
+            
             # Step 4: Entraînement du modèle
             logger.info("Step 4: Training model...")
             model = self.model_trainer.train_model(X_train, y_train, preprocessor, self.tune_hyperparameters)

@@ -31,6 +31,26 @@ jobs:
         mkdir -p data/raw
         wget https://raw.githubusercontent.com/ageron/handson-ml2/master/datasets/housing/housing.csv -O data/raw/california_housing.csv
         
+    - name: Rename columns
+      run: |
+        python -c "
+        import pandas as pd
+        df = pd.read_csv('data/raw/california_housing.csv')
+        df = df.rename(columns={
+            'longitude': 'Longitude',
+            'latitude': 'Latitude',
+            'housing_median_age': 'HousingMedianAge',
+            'total_rooms': 'TotalRooms',
+            'total_bedrooms': 'TotalBedrooms',
+            'population': 'Population',
+            'households': 'Households',
+            'median_income': 'MedianIncome',
+            'median_house_value': 'MedianHouseValue',
+            'ocean_proximity': 'OceanProximity'
+        })
+        df.to_csv('data/raw/california_housing.csv', index=False)
+        "
+        
     - name: Lint with flake8
       run: |
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics

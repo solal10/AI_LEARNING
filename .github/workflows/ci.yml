@@ -39,22 +39,28 @@ jobs:
         
         # Renommer les colonnes
         df = df.rename(columns={
-            'longitude': 'Longitude',
-            'latitude': 'Latitude',
-            'housing_median_age': 'HousingMedianAge',
-            'total_rooms': 'TotalRooms',
-            'total_bedrooms': 'TotalBedrooms',
-            'population': 'Population',
-            'households': 'Households',
-            'median_income': 'MedianIncome',
-            'median_house_value': 'MedianHouseValue',
-            'ocean_proximity': 'OceanProximity'
+            'longitude': 'longitude',
+            'latitude': 'latitude',
+            'housing_median_age': 'housing_median_age',
+            'total_rooms': 'total_rooms',
+            'total_bedrooms': 'total_bedrooms',
+            'population': 'population',
+            'households': 'households',
+            'median_income': 'median_income',
+            'median_house_value': 'median_house_value',
+            'ocean_proximity': 'ocean_proximity'
         })
         
         # Calculer les colonnes manquantes
-        df['AveRooms'] = df['TotalRooms'] / df['Households']
-        df['AveBedrms'] = df['TotalBedrooms'] / df['Households']
-        df['AveOccup'] = df['Population'] / df['Households']
+        df['AveRooms'] = df['total_rooms'] / df['households']
+        df['AveBedrms'] = df['total_bedrooms'] / df['households']
+        df['AveOccup'] = df['population'] / df['households']
+        
+        # Renommer les colonnes de latitude et longitude
+        df = df.rename(columns={
+            'longitude': 'Longitude',
+            'latitude': 'Latitude'
+        })
         
         # Sauvegarder le dataset
         df.to_csv('data/raw/california_housing.csv', index=False)

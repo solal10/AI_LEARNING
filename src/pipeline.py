@@ -4,6 +4,7 @@ from src.data.data_loader import DataLoader
 from src.data.data_cleaner import DataCleaner
 from src.data.data_preprocessor import DataPreprocessor
 from src.models.model_trainer import ModelTrainer
+from src.features.feature_engineering import generate_features
 
 # Configuration du logging
 logging.basicConfig(
@@ -53,55 +54,54 @@ class Pipeline:
 
     def run(self):
         """
-        Run the complete pipeline.
+        Exécute le pipeline complet.
         """
         try:
             logger.info("Starting pipeline...")
-
-            # Step 1: Load data
+            
+            # Step 1: Chargement des données
             logger.info("Step 1: Loading data...")
             data = self.data_loader.load_data(self.input_file)
             logger.info(f"Data loaded with shape: {data.shape}")
-
-            # Step 2: Clean data
+            
+            # Step 2: Nettoyage des données
             logger.info("Step 2: Cleaning data...")
             cleaned_data = self.data_cleaner.clean_data(data)
             logger.info(f"Data cleaned with shape: {cleaned_data.shape}")
-
-            # Step 3: Prepare data
+            
+            # Step 2.5: Feature Engineering
+            logger.info("Step 2.5: Feature Engineering...")
+            engineered_data = generate_features(cleaned_data)
+            logger.info(f"Features generated. New shape: {engineered_data.shape}")
+            
+            # Step 3: Préparation des données
             logger.info("Step 3: Preparing data...")
-            X_train, X_test, y_train, y_test, preprocessor = (
-                self.data_preprocessor.prepare_data(cleaned_data)
-            )
-            logger.info(
-                f"Training data shape: {X_train.shape}, Test data shape: {X_test.shape}"
-            )
-
-            # Step 4: Train model
+            X_train, X_test, y_train, y_test, preprocessor = self.data_preprocessor.prepare_data(engineered_data)
+            logger.info(f"Training data shape: {X_train.shape}, Test data shape: {X_test.shape}")
+            
+            # Step 4: Entraînement du modèle
             logger.info("Step 4: Training model...")
-            model = self.model_trainer.train_model(
-                X_train, y_train, preprocessor, self.tune_hyperparameters
-            )
+            model = self.model_trainer.train_model(X_train, y_train, preprocessor, self.tune_hyperparameters)
             logger.info("Model training completed")
-
-            # Step 4.5: Cross-validation
+            
+            # Step 4.5: Validation croisée
             logger.info("Step 4.5: Performing cross-validation...")
             cv_metrics = self.model_trainer.cross_validate_model(X_train, y_train)
             logger.info("Cross-validation completed")
-
-            # Step 5: Evaluate model
+            
+            # Step 5: Évaluation du modèle
             logger.info("Step 5: Evaluating model...")
             test_metrics = self.model_trainer.evaluate_model(X_test, y_test)
             logger.info("Model evaluation completed")
-
-            # Step 6: Save results
+            
+            # Step 6: Sauvegarde des résultats
             logger.info("Step 6: Saving results...")
             self.model_trainer.save_model("final_model")
             self.model_trainer.save_results(model, test_metrics, cv_metrics)
             logger.info("Results saved")
-
+            
             logger.info("Pipeline completed successfully!")
-
+            
         except Exception as e:
             logger.error(f"Pipeline failed: {str(e)}")
             raise

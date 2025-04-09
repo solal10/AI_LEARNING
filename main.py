@@ -3,6 +3,7 @@ import os
 import argparse
 import sys
 from src.pipeline import Pipeline
+from src.features.feature_engineering import generate_features
 
 
 def setup_logging():

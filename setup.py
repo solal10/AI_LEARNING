@@ -1,33 +1,22 @@
 from setuptools import setup, find_packages
 
-with open("README.md", "r", encoding="utf-8") as fh:
-    long_description = fh.read()
-
-with open("requirements.txt", "r", encoding="utf-8") as fh:
-    requirements = [
-        line.strip() for line in fh if line.strip() and not line.startswith("#")
-    ]
-
 setup(
     name="california_housing",
     version="0.1.0",
-    author="Your Name",
-    author_email="your.email@example.com",
-    description="A machine learning pipeline for California Housing dataset",
-    long_description=long_description,
-    long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/california-housing",
     packages=find_packages(),
-    classifiers=[
-        "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
-        "Operating System :: OS Independent",
+    install_requires=[
+        "numpy>=1.21.0",
+        "pandas>=1.3.0",
+        "scikit-learn>=1.0.0",
+        "matplotlib>=3.4.0",
+        "seaborn>=0.11.0",
+        "joblib>=1.0.0",
+        "pytest>=6.2.5",
+        "pytest-cov>=2.12.0",
+        "flake8>=3.9.0",
+        "black>=21.7b0",
+        "scipy>=1.7.0",
+        "xgboost>=2.0.3",
     ],
     python_requires=">=3.9",
-    install_requires=requirements,
-    entry_points={
-        "console_scripts": [
-            "california-housing=src.main:main",
-        ],
-    },
 )

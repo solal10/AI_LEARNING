@@ -38,37 +38,25 @@ ENV/
 .ipynb_checkpoints
 *.ipynb
 
-# Data files
-*.csv
-*.xlsx
-*.xls
-*.db
-*.sqlite3
+# Project specific
+## Data files
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+## Model files
+models/*
+!models/.gitkeep
+
+## Report files
+reports/*
+!reports/.gitkeep
 
 # Logs
 *.log
 logs/
 log/
-
-# Model files
-*.pkl
-*.h5
-*.model
-*.joblib
-
-# Test coverage
-.coverage
-htmlcov/
-.tox/
-.nox/
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
 
 # Distribution / packaging
 .Python
@@ -88,6 +76,20 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
+
+# Test coverage
+.coverage
+htmlcov/
+.tox/
+.nox/
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
 
 # mypy
 .mypy_cache/

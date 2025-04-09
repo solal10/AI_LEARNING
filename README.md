@@ -1,111 +1,58 @@
-# Projet de Modélisation - California Housing
+# California Housing Machine Learning Pipeline
 
-Ce projet implémente un pipeline complet de modélisation pour prédire les prix des maisons en Californie en utilisant le dataset California Housing.
+A machine learning pipeline for analyzing and predicting California housing prices.
 
-## Structure du Projet
+## Description
 
-```
-.
-├── data/
-│   ├── raw/           # Données brutes
-│   └── processed/     # Données nettoyées
-├── models/            # Modèles sauvegardés
-├── reports/           # Rapports et visualisations
-├── src/
-│   ├── utils/         # Utilitaires
-│   │   ├── data_loader.py
-│   │   ├── data_cleaner.py
-│   │   └── data_preprocessor.py
-│   ├── models/        # Modèles
-│   │   └── model_trainer.py
-│   └── reporting/     # Génération de rapports
-│       └── report_generator.py
-└── main.py           # Script principal
-```
+This project implements a complete machine learning pipeline for the California Housing dataset, including:
+- Data loading and validation
+- Data cleaning and preprocessing
+- Feature engineering
+- Model training and evaluation
+- Report generation
 
 ## Installation
 
-1. Cloner le repository :
+1. Clone the repository:
 ```bash
-git clone <repository-url>
+git clone https://github.com/yourusername/california-housing.git
 cd california-housing
 ```
 
-2. Créer un environnement virtuel et l'activer :
+2. Create a virtual environment and activate it:
 ```bash
 python -m venv venv
-source venv/bin/activate  # Sur Unix/macOS
-# ou
-venv\Scripts\activate  # Sur Windows
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-3. Installer les dépendances :
+3. Install the package:
 ```bash
-pip install -r requirements.txt
+pip install -e .
 ```
 
-## Utilisation
+## Usage
 
-1. Placer votre fichier de données dans le dossier `data/raw/`
-
-2. Exécuter le pipeline :
+Run the pipeline with:
 ```bash
-python main.py --input_file votre_fichier.csv
+python -m src.main --input_file data/raw/california_housing.csv
 ```
 
-Options disponibles :
-- `--input_file` : Nom du fichier d'entrée (défaut: california_housing.csv)
-- `--test_size` : Proportion du dataset pour les tests (défaut: 0.2)
-- `--random_state` : Seed pour la reproductibilité (défaut: 42)
+## Project Structure
 
-## Fonctionnalités
+```
+california-housing/
+├── data/
+│   ├── raw/           # Raw data files
+│   └── processed/     # Processed data files
+├── src/
+│   ├── models/        # Model implementations
+│   ├── utils/         # Utility functions
+│   └── reporting/     # Report generation
+├── tests/             # Test files
+├── requirements.txt   # Production dependencies
+└── setup.py          # Package configuration
+```
 
-1. **Chargement des données**
-   - Vérification des colonnes attendues
-   - Validation des types de données
+## License
 
-2. **Nettoyage des données**
-   - Gestion des valeurs manquantes
-   - Suppression des doublons
-   - Correction des types de données
-   - Détection et traitement des outliers
-
-3. **Préparation des données**
-   - Séparation features/target
-   - Encodage des variables catégorielles
-   - Split train/test
-   - Standardisation des données
-
-4. **Modélisation**
-   - Entraînement d'un modèle de régression
-   - Évaluation avec RMSE, MAE, R²
-   - Analyse de l'importance des features
-
-5. **Reporting**
-   - Génération de visualisations
-   - Rapport de performance
-   - Sauvegarde des résultats
-
-## Résultats
-
-Les résultats sont sauvegardés dans les dossiers suivants :
-- `data/processed/` : Données nettoyées
-- `models/` : Modèle entraîné
-- `reports/` : Visualisations et rapports
-
-## Dépendances
-
-- pandas
-- numpy
-- scikit-learn
-- matplotlib
-- seaborn
-- scipy
-
-## Auteur
-
-[Votre nom]
-
-## Licence
-
-[Votre licence] 
+This project is licensed under the MIT License - see the LICENSE file for details. 

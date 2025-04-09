@@ -39,12 +39,6 @@ jobs:
       run: |
         PYTHONPATH=$PYTHONPATH:. pytest --cov=src tests/ --cov-report=xml
         
-    - name: Upload coverage
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.xml
-        fail_ci_if_error: true
-        
     - name: Run model validation
       run: |
         python main.py --input_file data/raw/california_housing.csv --tune_hyperparameters 

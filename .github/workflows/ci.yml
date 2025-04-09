@@ -31,11 +31,13 @@ jobs:
         mkdir -p data/raw
         wget https://raw.githubusercontent.com/ageron/handson-ml2/master/datasets/housing/housing.csv -O data/raw/california_housing.csv
         
-    - name: Rename columns
+    - name: Process dataset
       run: |
         python -c "
         import pandas as pd
         df = pd.read_csv('data/raw/california_housing.csv')
+        
+        # Renommer les colonnes
         df = df.rename(columns={
             'longitude': 'Longitude',
             'latitude': 'Latitude',
@@ -48,6 +50,13 @@ jobs:
             'median_house_value': 'MedianHouseValue',
             'ocean_proximity': 'OceanProximity'
         })
+        
+        # Calculer les colonnes manquantes
+        df['AveRooms'] = df['TotalRooms'] / df['Households']
+        df['AveBedrms'] = df['TotalBedrooms'] / df['Households']
+        df['AveOccup'] = df['Population'] / df['Households']
+        
+        # Sauvegarder le dataset
         df.to_csv('data/raw/california_housing.csv', index=False)
         "
         

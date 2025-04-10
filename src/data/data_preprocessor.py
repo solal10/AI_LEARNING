@@ -19,13 +19,17 @@ class DataPreprocessor:
     Classe pour prétraiter les données du California Housing Dataset.
     """
 
-    def __init__(self, task: str = "regression"):
+    def __init__(self, test_size: float = 0.2, random_state: int = 42, task: str = "regression"):
         """
         Initialise le DataPreprocessor.
 
         Args:
+            test_size (float): Proportion du dataset à utiliser pour le test
+            random_state (int): Seed pour la reproductibilité
             task (str): Type de tâche (regression ou classification)
         """
+        self.test_size = test_size
+        self.random_state = random_state
         self.task = task
         self.preprocessor = None
         self.numerical_features = None
@@ -64,7 +68,7 @@ class DataPreprocessor:
 
         # Split des données
         X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=42
+            X, y, test_size=self.test_size, random_state=self.random_state
         )
 
         logger.info(f"Taille du dataset d'entraînement: {X_train.shape}")
@@ -88,13 +92,21 @@ class DataPreprocessor:
         logger.info(y_class.value_counts(normalize=True))
         return y_class
 
-    def _create_preprocessor(self) -> Pipeline:
+    def _create_preprocessor(self, numeric_features=None, categorical_features=None) -> Pipeline:
         """
         Crée le preprocessor pour les transformations.
+
+        Args:
+            numeric_features (list): Liste des features numériques
+            categorical_features (list): Liste des features catégorielles
 
         Returns:
             Pipeline: Preprocessor pour les transformations
         """
+        # Utiliser les features fournies ou celles détectées
+        numeric_features = numeric_features or self.numerical_features
+        categorical_features = categorical_features or self.categorical_features
+
         # Définir les transformations
         numerical_transformer = StandardScaler()
         categorical_transformer = OneHotEncoder(handle_unknown="ignore")
@@ -102,8 +114,8 @@ class DataPreprocessor:
         # Créer le preprocessor
         preprocessor = ColumnTransformer(
             transformers=[
-                ("num", numerical_transformer, self.numerical_features),
-                ("cat", categorical_transformer, self.categorical_features),
+                ("num", numerical_transformer, numeric_features),
+                ("cat", categorical_transformer, categorical_features),
             ]
         )
 

@@ -1,20 +1,21 @@
+import os
+import json
 import logging
-import joblib
-import pandas as pd
 import numpy as np
+import pandas as pd
+import joblib
 from typing import Dict, Any, Union, List
-from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error, accuracy_score, precision_score, recall_score, f1_score
 from sklearn.model_selection import cross_val_score, GridSearchCV
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from sklearn.linear_model import LinearRegression
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.neighbors import KNeighborsRegressor
 import xgboost as xgb
-import os
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import cross_validate
 from datetime import datetime
-import json
+import multiprocessing
 
 # Configuration du logging
 logging.basicConfig(
@@ -22,12 +23,18 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Configure joblib to use 'loky' backend instead of default 'fork'
+joblib.parallel.BACKENDS['multiprocessing'] = joblib.parallel.MultiprocessingBackend
+os.environ['JOBLIB_START_METHOD'] = 'spawn'
+
+# Set the number of parallel jobs based on CPU cores
+N_JOBS = min(multiprocessing.cpu_count() - 1, 4)  # Use at most 4 cores
 
 class ModelTrainer:
     """Classe pour entraîner et évaluer le modèle."""
 
     def __init__(
-        self, model_dir="models", model_type="linear", hyperparams=None, cv_folds=5
+        self, model_dir="models", model_type="linear", hyperparams=None, cv_folds=5, task="regression", should_tune_hyperparameters=False
     ):
         """
         Initialise le ModelTrainer.
@@ -37,6 +44,8 @@ class ModelTrainer:
             model_type (str): Type de modèle ('linear', 'random_forest', 'xgboost')
             hyperparams (dict): Hyperparamètres pour le modèle
             cv_folds (int): Nombre de folds pour la validation croisée
+            task (str): Type de tâche ('regression' ou 'classification')
+            should_tune_hyperparameters (bool): Si True, effectue une recherche d'hyperparamètres
         """
         self.model_dir = model_dir
         self.model = None
@@ -44,6 +53,8 @@ class ModelTrainer:
         self.model_type = model_type
         self.hyperparams = hyperparams or {}
         self.cv_folds = cv_folds
+        self.task = task
+        self.should_tune_hyperparameters = should_tune_hyperparameters
 
         # Créer le dossier models s'il n'existe pas
         if not os.path.exists(model_dir):
@@ -59,27 +70,47 @@ class ModelTrainer:
         if self.model_type == "linear":
             return LinearRegression()
         elif self.model_type == "random_forest":
-            return RandomForestRegressor(
-                n_estimators=self.hyperparams.get("n_estimators", 100),
-                max_depth=self.hyperparams.get("max_depth", None),
-                min_samples_split=self.hyperparams.get("min_samples_split", 2),
-                min_samples_leaf=self.hyperparams.get("min_samples_leaf", 1),
-                random_state=self.hyperparams.get("random_state", 42),
-            )
+            if self.task == "classification":
+                return RandomForestClassifier(
+                    n_estimators=self.hyperparams.get("n_estimators", 100),
+                    max_depth=self.hyperparams.get("max_depth", None),
+                    min_samples_split=self.hyperparams.get("min_samples_split", 2),
+                    min_samples_leaf=self.hyperparams.get("min_samples_leaf", 1),
+                    random_state=self.hyperparams.get("random_state", 42),
+                )
+            else:
+                return RandomForestRegressor(
+                    n_estimators=self.hyperparams.get("n_estimators", 100),
+                    max_depth=self.hyperparams.get("max_depth", None),
+                    min_samples_split=self.hyperparams.get("min_samples_split", 2),
+                    min_samples_leaf=self.hyperparams.get("min_samples_leaf", 1),
+                    random_state=self.hyperparams.get("random_state", 42),
+                )
         elif self.model_type == "xgboost":
-            return xgb.XGBRegressor(
-                n_estimators=self.hyperparams.get("n_estimators", 100),
-                max_depth=self.hyperparams.get("max_depth", 6),
-                learning_rate=self.hyperparams.get("learning_rate", 0.1),
-                subsample=self.hyperparams.get("subsample", 1.0),
-                colsample_bytree=self.hyperparams.get("colsample_bytree", 1.0),
-                random_state=self.hyperparams.get("random_state", 42),
-                enable_categorical=True,
-            )
+            if self.task == "classification":
+                return xgb.XGBClassifier(
+                    n_estimators=self.hyperparams.get("n_estimators", 100),
+                    max_depth=self.hyperparams.get("max_depth", 6),
+                    learning_rate=self.hyperparams.get("learning_rate", 0.1),
+                    subsample=self.hyperparams.get("subsample", 1.0),
+                    colsample_bytree=self.hyperparams.get("colsample_bytree", 1.0),
+                    random_state=self.hyperparams.get("random_state", 42),
+                    enable_categorical=True,
+                )
+            else:
+                return xgb.XGBRegressor(
+                    n_estimators=self.hyperparams.get("n_estimators", 100),
+                    max_depth=self.hyperparams.get("max_depth", 6),
+                    learning_rate=self.hyperparams.get("learning_rate", 0.1),
+                    subsample=self.hyperparams.get("subsample", 1.0),
+                    colsample_bytree=self.hyperparams.get("colsample_bytree", 1.0),
+                    random_state=self.hyperparams.get("random_state", 42),
+                    enable_categorical=True,
+                )
         else:
             raise ValueError(f"Type de modèle non supporté: {self.model_type}")
 
-    def train_model(self, X_train, y_train, preprocessor, tune_hyperparams=False):
+    def train_model(self, X_train, y_train, preprocessor, tune_hyperparams=None):
         """
         Entraîne le modèle avec ou sans recherche d'hyperparamètres.
 
@@ -95,11 +126,15 @@ class ModelTrainer:
         logger.info(f"Début de l'entraînement du modèle ({self.model_type})")
 
         # Créer le pipeline complet
-        self.model = Pipeline(
-            [("preprocessor", preprocessor), ("regressor", self._get_model())]
-        )
+        self.model = Pipeline([
+            ("preprocessor", preprocessor),
+            ("regressor", self._get_model())
+        ])
 
-        if tune_hyperparams:
+        # Utiliser le paramètre local s'il est fourni, sinon utiliser l'attribut de classe
+        should_tune = tune_hyperparams if tune_hyperparams is not None else self.should_tune_hyperparameters
+
+        if should_tune:
             # Effectuer la recherche d'hyperparamètres
             self.tune_hyperparameters(X_train, y_train)
         else:
@@ -157,6 +192,21 @@ class ModelTrainer:
         logger.info(f"Meilleurs paramètres trouvés: {grid_search.best_params_}")
         logger.info(f"Meilleur score: {-grid_search.best_score_:.4f} (RMSE)")
 
+        # Sauvegarder les résultats du tuning
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        tuning_results = pd.DataFrame(grid_search.cv_results_)
+        tuning_results.to_csv(os.path.join(self.model_dir, f"tuning_results_{self.model_type}_{timestamp}.csv"), index=False)
+        
+        # Sauvegarder les meilleurs paramètres
+        best_params = {
+            "model_type": self.model_type,
+            "best_params": grid_search.best_params_,
+            "best_score": float(-grid_search.best_score_),
+            "timestamp": timestamp
+        }
+        with open(os.path.join(self.model_dir, f"best_params_{self.model_type}_{timestamp}.json"), "w") as f:
+            json.dump(best_params, f, indent=4)
+
         # Mettre à jour les hyperparamètres avec les meilleurs trouvés
         for param, value in grid_search.best_params_.items():
             param_name = param.replace("regressor__", "")
@@ -178,19 +228,28 @@ class ModelTrainer:
         # Faire les prédictions
         y_pred = self.model.predict(X_test)
 
-        # Calculer les métriques
-        rmse = np.sqrt(mean_squared_error(y_test, y_pred))
-        mae = mean_absolute_error(y_test, y_pred)
-        r2 = r2_score(y_test, y_pred)
-
-        # Stocker les métriques
-        self.metrics = {"rmse": rmse, "mae": mae, "r2": r2}
+        # Calculer les métriques selon le type de tâche
+        if self.task == "regression":
+            rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+            mae = mean_absolute_error(y_test, y_pred)
+            r2 = r2_score(y_test, y_pred)
+            self.metrics = {"rmse": rmse, "mae": mae, "r2": r2}
+        else:  # classification
+            accuracy = accuracy_score(y_test, y_pred)
+            precision = precision_score(y_test, y_pred, average='weighted')
+            recall = recall_score(y_test, y_pred, average='weighted')
+            f1 = f1_score(y_test, y_pred, average='weighted')
+            self.metrics = {
+                "accuracy": accuracy,
+                "precision": precision,
+                "recall": recall,
+                "f1": f1
+            }
 
         # Afficher les métriques
         logger.info("Métriques d'évaluation:")
-        logger.info(f"RMSE: {rmse:.4f}")
-        logger.info(f"MAE: {mae:.4f}")
-        logger.info(f"R2: {r2:.4f}")
+        for metric, value in self.metrics.items():
+            logger.info(f"{metric.upper()}: {value:.4f}")
 
         return self.metrics
 
@@ -278,12 +337,20 @@ class ModelTrainer:
         """
         logger.info(f"Début de la validation croisée avec {self.cv_folds} folds")
 
-        # Définir les métriques à calculer
-        scoring = {
-            "rmse": "neg_root_mean_squared_error",
-            "mae": "neg_mean_absolute_error",
-            "r2": "r2",
-        }
+        # Définir les métriques à calculer selon le type de tâche
+        if self.task == "regression":
+            scoring = {
+                "rmse": "neg_root_mean_squared_error",
+                "mae": "neg_mean_absolute_error",
+                "r2": "r2",
+            }
+        else:  # classification
+            scoring = {
+                "accuracy": "accuracy",
+                "precision": "precision_weighted",
+                "recall": "recall_weighted",
+                "f1": "f1_weighted",
+            }
 
         # Effectuer la validation croisée
         cv_results = cross_validate(
@@ -293,7 +360,7 @@ class ModelTrainer:
             cv=self.cv_folds,
             scoring=scoring,
             return_train_score=True,
-            n_jobs=-1,
+            n_jobs=N_JOBS,
         )
 
         # Calculer les moyennes et écarts-types
@@ -303,7 +370,7 @@ class ModelTrainer:
             train_scores = cv_results[f"train_{metric}"]
 
             # Inverser le signe pour les métriques négatives
-            if metric in ["rmse", "mae"]:
+            if metric in ["rmse", "mae"] and self.task == "regression":
                 test_scores = -test_scores
                 train_scores = -train_scores
 
@@ -337,21 +404,35 @@ class ModelTrainer:
             cv_results (dict): Résultats de la validation croisée
         """
         # Créer un DataFrame avec les scores
-        scores_df = pd.DataFrame(
-            {
-                "fold": range(1, self.cv_folds + 1),
+        scores_dict = {"fold": range(1, self.cv_folds + 1)}
+        
+        # Ajouter les métriques selon le type de tâche
+        if self.task == "regression":
+            scores_dict.update({
                 "test_rmse": -cv_results["test_rmse"],
                 "test_mae": -cv_results["test_mae"],
                 "test_r2": cv_results["test_r2"],
                 "train_rmse": -cv_results["train_rmse"],
                 "train_mae": -cv_results["train_mae"],
                 "train_r2": cv_results["train_r2"],
-            }
-        )
+            })
+        else:  # classification
+            scores_dict.update({
+                "test_accuracy": cv_results["test_accuracy"],
+                "test_precision": cv_results["test_precision"],
+                "test_recall": cv_results["test_recall"],
+                "test_f1": cv_results["test_f1"],
+                "train_accuracy": cv_results["train_accuracy"],
+                "train_precision": cv_results["train_precision"],
+                "train_recall": cv_results["train_recall"],
+                "train_f1": cv_results["train_f1"],
+            })
+
+        scores_df = pd.DataFrame(scores_dict)
 
         # Créer le nom du fichier avec timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"cv_scores_{self.model_type}_{timestamp}.csv"
+        filename = f"cv_scores_{self.task}_{self.model_type}_{timestamp}.csv"
         filepath = os.path.join(self.model_dir, filename)
 
         # Sauvegarder le DataFrame
@@ -435,7 +516,7 @@ class ModelTrainer:
             param_grid=param_grid,
             cv=self.cv_folds,
             scoring=scoring,
-            n_jobs=-1,
+            n_jobs=N_JOBS,
             verbose=1,
         )
 
@@ -483,7 +564,7 @@ class ModelTrainer:
 
         # Créer le nom du fichier avec timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"hyperparameter_tuning_{self.model_type}_{timestamp}.csv"
+        filename = f"tuning_results_{self.model_type}_{timestamp}.csv"
         filepath = os.path.join(self.model_dir, filename)
 
         # Sauvegarder le DataFrame
@@ -578,7 +659,7 @@ class ModelTrainer:
         from src.reporting.report_generator import ReportGenerator
         report_generator = ReportGenerator()
         report_generator.generate_comparison_report(
-            y_test.values,
+            y_test,  # Utiliser directement le tableau numpy
             y_preds,
             list(models.keys()),
             results_dict

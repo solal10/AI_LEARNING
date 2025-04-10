@@ -19,51 +19,52 @@ class DataPreprocessor:
     Classe pour prétraiter les données du California Housing Dataset.
     """
 
-    def __init__(self, test_size=0.2, random_state=42):
+    def __init__(self, task: str = "regression"):
         """
         Initialise le DataPreprocessor.
 
         Args:
-            test_size (float): Proportion des données pour le test
-            random_state (int): Graine aléatoire pour la reproductibilité
+            task (str): Type de tâche (regression ou classification)
         """
-        self.test_size = test_size
-        self.random_state = random_state
+        self.task = task
         self.preprocessor = None
+        self.numerical_features = None
+        self.categorical_features = None
 
-    def prepare_data(self, df):
+    def prepare_data(self, data: pd.DataFrame) -> tuple:
         """
         Prépare les données pour l'entraînement.
 
         Args:
-            df (pd.DataFrame): DataFrame à prétraiter
+            data (pd.DataFrame): Données à préparer
 
         Returns:
-            tuple: (X_train, X_test, y_train, y_test, preprocessor)
+            tuple: X_train, X_test, y_train, y_test, preprocessor
         """
-        if df.empty:
+        if data.empty:
             raise ValueError("Le DataFrame est vide")
 
-        # Séparer features et target
-        target_column = "median_house_value"
-        X = df.drop(target_column, axis=1)
-        y = df[target_column]
+        # Séparer les features et la target
+        X = data.drop("median_house_value", axis=1)
+        y = data["median_house_value"]
 
-        # Identifier les features numériques et catégorielles
-        numeric_features = X.select_dtypes(include=["int64", "float64"]).columns
-        categorical_features = X.select_dtypes(include=["object", "category"]).columns
+        # Transformer la target en classes si classification
+        if self.task == "classification":
+            y = self._convert_to_classes(y)
 
-        logger.info(f"Features numériques: {len(numeric_features)}")
-        logger.info(f"Features catégorielles: {len(categorical_features)}")
+        # Identifier les colonnes numériques et catégorielles
+        self.numerical_features = X.select_dtypes(include=[np.number]).columns
+        self.categorical_features = X.select_dtypes(include=["object", "category"]).columns
+
+        logger.info(f"Features numériques: {len(self.numerical_features)}")
+        logger.info(f"Features catégorielles: {len(self.categorical_features)}")
 
         # Créer le preprocessor
-        self.preprocessor = self._create_preprocessor(
-            numeric_features, categorical_features
-        )
+        self.preprocessor = self._create_preprocessor()
 
-        # Split train/test
+        # Split des données
         X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=self.test_size, random_state=self.random_state
+            X, y, test_size=0.2, random_state=42
         )
 
         logger.info(f"Taille du dataset d'entraînement: {X_train.shape}")
@@ -71,33 +72,38 @@ class DataPreprocessor:
 
         return X_train, X_test, y_train, y_test, self.preprocessor
 
-    def _create_preprocessor(self, numeric_features, categorical_features):
+    def _convert_to_classes(self, y: pd.Series) -> pd.Series:
         """
-        Crée un preprocessor pour transformer les données.
+        Convertit la variable cible en classes pour la classification.
 
         Args:
-            numeric_features (list): Liste des features numériques
-            categorical_features (list): Liste des features catégorielles
+            y (pd.Series): Variable cible continue
 
         Returns:
-            ColumnTransformer: Preprocessor configuré
+            pd.Series: Variable cible discrétisée
         """
-        numeric_transformer = StandardScaler()
-        try:
-            # Try new scikit-learn version (>=1.2)
-            categorical_transformer = OneHotEncoder(
-                sparse_output=False, handle_unknown="ignore"
-            )
-        except TypeError:
-            # Fallback for older scikit-learn versions
-            categorical_transformer = OneHotEncoder(
-                sparse=False, handle_unknown="ignore"
-            )
+        # Utiliser des quantiles pour créer 5 classes
+        y_class = pd.qcut(y, q=5, labels=[0, 1, 2, 3, 4])
+        logger.info("Distribution des classes:")
+        logger.info(y_class.value_counts(normalize=True))
+        return y_class
 
+    def _create_preprocessor(self) -> Pipeline:
+        """
+        Crée le preprocessor pour les transformations.
+
+        Returns:
+            Pipeline: Preprocessor pour les transformations
+        """
+        # Définir les transformations
+        numerical_transformer = StandardScaler()
+        categorical_transformer = OneHotEncoder(handle_unknown="ignore")
+
+        # Créer le preprocessor
         preprocessor = ColumnTransformer(
             transformers=[
-                ("num", numeric_transformer, numeric_features),
-                ("cat", categorical_transformer, categorical_features),
+                ("num", numerical_transformer, self.numerical_features),
+                ("cat", categorical_transformer, self.categorical_features),
             ]
         )
 

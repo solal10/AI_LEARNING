@@ -1,6 +1,7 @@
 import numpy as np
 import os
 from src.models.model_trainer import ModelTrainer
+from sklearn.preprocessing import StandardScaler
 
 def test_model_training():
     """Test l'entraînement du modèle."""
@@ -10,9 +11,13 @@ def test_model_training():
                   [70, 1, 130, 220, 0, 130, 0, 1.5]])
     y = np.array([0, 1, 0])
 
+    # Initialize preprocessor
+    preprocessor = StandardScaler()
+    preprocessor.fit(X)
+
     # Initialize and train model
-    model = ModelTrainer(model_type="logistic", task="classification")
-    model.train_model(X, y)
+    model = ModelTrainer(model_type="random_forest", task="classification")
+    model.train_model(X, y, preprocessor)
 
     # Make predictions
     predictions = model.predict(X)
@@ -26,9 +31,13 @@ def test_model_prediction():
                   [60, 0, 120, 180, 1, 140, 1, 2.0]])
     y = np.array([0, 1])
 
+    # Initialize preprocessor
+    preprocessor = StandardScaler()
+    preprocessor.fit(X)
+
     # Train model
-    model = ModelTrainer(model_type="logistic", task="classification")
-    model.train_model(X, y)
+    model = ModelTrainer(model_type="random_forest", task="classification")
+    model.train_model(X, y, preprocessor)
 
     # Test prediction
     X_test = np.array([[65, 1, 130, 190, 0, 145, 0, 1.5]])
@@ -43,16 +52,20 @@ def test_model_save_load(tmp_path):
                   [60, 0, 120, 180, 1, 140, 1, 2.0]])
     y = np.array([0, 1])
 
+    # Initialize preprocessor
+    preprocessor = StandardScaler()
+    preprocessor.fit(X)
+
     # Train and save model
-    model = ModelTrainer(model_type="logistic", task="classification")
-    model.train_model(X, y)
+    model = ModelTrainer(model_type="random_forest", task="classification")
+    model.train_model(X, y, preprocessor)
     
     save_path = os.path.join(tmp_path, "model.joblib")
     model.save_model(save_path)
     assert os.path.exists(save_path)
 
     # Load model and make predictions
-    loaded_model = ModelTrainer(model_type="logistic", task="classification")
+    loaded_model = ModelTrainer(model_type="random_forest", task="classification")
     loaded_model.load_model(save_path)
     predictions = loaded_model.predict(X)
     assert predictions.shape == (2,)

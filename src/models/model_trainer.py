@@ -666,3 +666,20 @@ class ModelTrainer:
         )
         
         return results_dict
+
+    def predict(self, X):
+        """
+        Fait des prédictions avec le modèle entraîné.
+
+        Args:
+            X (np.ndarray ou pd.DataFrame): Features pour la prédiction
+
+        Returns:
+            np.ndarray: Prédictions du modèle
+
+        Raises:
+            ValueError: Si le modèle n'a pas été entraîné
+        """
+        if self.model is None:
+            raise ValueError("Le modèle n'a pas été entraîné. Appelez train_model d'abord.")
+        return self.model.predict(X)
